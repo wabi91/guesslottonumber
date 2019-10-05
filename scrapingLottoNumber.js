@@ -15,11 +15,16 @@ const dateElPath = '.lotto_wrap > div.lotto_tit > h3 > a > span';
 const startRoundArg = process.argv.slice(2)[0] || 1;
 const endRoundArg = process.argv.slice(3)[0];
 
-term.bold.cyan( 'Start to scraping lotto numbers...\n' ) ;
-term.green( 'Hit CTRL-C to stop scraping.\n\n' ) ;
+term.bold.cyan('Start to scraping lotto numbers...\n');
+term.green('Hit CTRL-C to stop scraping.\n\n');
+
+const saveDir = './scraping';
 
 try {
   (async () => {
+    if (await !fs.existsSync(saveDir)){
+      await fs.mkdirSync(saveDir);
+    }
     const data = {};
     const browser = await puppeteer.launch({  });
     const page = await browser.newPage();
@@ -27,7 +32,7 @@ try {
   
     const getData = async (round) => {
       await page.goto(getSearchUrl(round), {waitUntil: 'networkidle2'});
-      const html = await page.$eval( 'body', e => e.outerHTML );
+      const html = await page.$eval('body', e => e.outerHTML);
       const $ = cheerio.load(html, {decodeEntities: false});
       const numbersEl = $(lottoNumberElPath);
       const dateEl = $(dateElPath);
@@ -35,7 +40,7 @@ try {
         numbersEl.length === 0
         || dateEl.length === 0
         || (endRoundArg && endRoundArg < round)
-      ) {
+    ) {
         return;
       }
       term.bold.cyan(`Start to scrap ${round}st lotto numbers\n`);
@@ -50,7 +55,7 @@ try {
         const bonusNumber = lottoNumbers.splice(6, 1);
         data[round] = {
           lottoNumbers,
-          bonusNumber,
+          bonusNumber: bonusNumber ? bonusNumber[0] : null,
           error: '',
         };
       }
@@ -60,12 +65,13 @@ try {
     };
     await getData(firstRound);
     fs.writeFileSync(
-      './scraping/lottoData.json',
-      JSON.stringify(data, null, 4),
+      `${saveDir}/lottoData.json`,
+      JSON.stringify(data, null, 2),
       'utf8'
-    );
+  );
     await browser.close();
   })();
 } catch(err) {
+  term.bold.red(err);
   process.exit();
 }
