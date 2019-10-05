@@ -1,0 +1,12 @@
+{
+  "name": "guesslottonumber",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/wabi91/guesslottonumber.git",
+  "author": "YouBeen Kim <qlqjsk@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "brain.js": "^2.0.0-alpha.9",
+    "puppeteer": "^1.20.0"
+  }
+}
