@@ -1,3 +1,4 @@
+const term = require('terminal-kit').terminal;
 const fs = require('fs');
 const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
@@ -5,28 +6,66 @@ const { map, toNumber } = require('lodash');
 
 const timeout = 10000;
 
-const baseSearchUrl = 'https://search.naver.com/search.naver?sm=top_hty&fbm=1&ie=utf8&query=%EB%A1%9C%EB%98%90+2%ED%9A%8C+%EB%8B%B9%EC%B2%A8%EB%B2%88%ED%98%B8';
+const getSearchUrl = (round) => (`https://search.naver.com/search.naver?sm=top_hty&fbm=1&ie=utf8&query=%EB%A1%9C%EB%98%90+${round}%ED%9A%8C+%EB%8B%B9%EC%B2%A8%EB%B2%88%ED%98%B8`);
 
-// const lottoNumber = [1,45];
+const lottoNumberElPath = '.lotto_wrap .num_box span.num';
+const dateElPath = '.lotto_wrap > div.lotto_tit > h3 > a > span';
 
-(async () => {
-  const browser = await puppeteer.launch({  });
-  const page = await browser.newPage();
-  await page.goto(baseSearchUrl, {waitUntil: 'networkidle2'});
-  const html = await page.$eval( 'body', e => e.outerHTML );
-  const $ = cheerio.load(html, {decodeEntities: false});
-  const numbersEl = $('.lotto_wrap .num_box span.num');
-  if (numbersEl.length === 0) {
-    console.log('없는 회차');
-  } else if (numbersEl.length < 7) {
-    console.log('올바르지 않은 로또번호 개수');
-  } else {
-    const lottoArray = map(numbersEl, (el) => {
-      const number = toNumber($(el).text());
-      return number;
-    });
-    fs.writeFileSync('./scraping/lottoNumber.txt', lottoArray, 'utf8');
-    console.log(lottoArray);
-  }
-  await browser.close();
-})();
+// const lottoNumber = [1,45]; 880
+const startRoundArg = process.argv.slice(2)[0] || 1;
+const endRoundArg = process.argv.slice(3)[0];
+
+term.bold.cyan( 'Start to scraping lotto numbers...\n' ) ;
+term.green( 'Hit CTRL-C to stop scraping.\n\n' ) ;
+
+try {
+  (async () => {
+    const data = {};
+    const browser = await puppeteer.launch({  });
+    const page = await browser.newPage();
+    const firstRound = toNumber(startRoundArg);
+  
+    const getData = async (round) => {
+      await page.goto(getSearchUrl(round), {waitUntil: 'networkidle2'});
+      const html = await page.$eval( 'body', e => e.outerHTML );
+      const $ = cheerio.load(html, {decodeEntities: false});
+      const numbersEl = $(lottoNumberElPath);
+      const dateEl = $(dateElPath);
+      if (
+        numbersEl.length === 0
+        || dateEl.length === 0
+        || (endRoundArg && endRoundArg < round)
+      ) {
+        return;
+      }
+      term.bold.cyan(`Start to scrap ${round}st lotto numbers\n`);
+      if (numbersEl.length < 7) {
+        data[round] = {
+          lottoNumbers: [],
+          bonusNumber: null,
+          error: '올바르지 않은 로또번호 개수',
+        };
+      } else {
+        const lottoNumbers = map(numbersEl, (el) => toNumber($(el).text()));
+        const bonusNumber = lottoNumbers.splice(6, 1);
+        data[round] = {
+          lottoNumbers,
+          bonusNumber,
+          error: '',
+        };
+      }
+      term.bold.cyan(`finished scarping ${round}st lotto numbers\n`);
+      term.red('------------------------\n');
+      await getData(round + 1);
+    };
+    await getData(firstRound);
+    fs.writeFileSync(
+      './scraping/lottoData.json',
+      JSON.stringify(data, null, 4),
+      'utf8'
+    );
+    await browser.close();
+  })();
+} catch(err) {
+  process.exit();
+}
