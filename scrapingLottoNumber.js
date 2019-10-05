@@ -22,8 +22,8 @@ const saveDir = './scraping';
 
 try {
   (async () => {
-    if (await !fs.existsSync(saveDir)){
-      await fs.mkdirSync(saveDir);
+    if (!fs.existsSync(saveDir)){
+      fs.mkdirSync(saveDir);
     }
     const data = {};
     const browser = await puppeteer.launch({  });
@@ -68,10 +68,9 @@ try {
       `${saveDir}/lottoData.json`,
       JSON.stringify(data, null, 2),
       'utf8'
-  );
+    );
     await browser.close();
   })();
 } catch(err) {
-  term.bold.red(err);
   process.exit();
 }
