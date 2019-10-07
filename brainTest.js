@@ -48,7 +48,7 @@ try {
 
     const outputData = {};
     for(let num = lottoNumbers[0]; num <= lottoNumbers[1]; num += 1) {
-      const output = net.run([1]);
+      const output = net.run([ num ]);
       outputData[num] = `${output[0] * 100} %`;
     }
     console.log(outputData);
